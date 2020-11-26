@@ -48,7 +48,7 @@ def get_encounter_id(sid, boss, website, parse_date):
         html = requests.get(url).text
         date = html.split('<div class="col-lg-3">')[1]
         date = date.split(" ")[0]
-        d = datetime.strptime(date, '%d/%m/%Y')
+        d = datetime.strptime(date, '%m/%d/%Y')
         date = d.strftime('%Y-%m-%d')
         if date >= parse_date:
             print(date + " " + url)

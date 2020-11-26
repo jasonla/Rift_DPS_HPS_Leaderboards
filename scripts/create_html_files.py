@@ -206,8 +206,8 @@ def create_url_dps(encounterid, playerid, text):
 
 
 def create_url_hps(encounterid, playerid, text):
-    url = "https://prancingturtle.com"
-    url = '<a href="' + url + '/Encounter/Interaction?id=' + encounterid + "&p=" + playerid + '&outgoing=True&type=HPS&mode=ability&filter=all" target="_blank">' + text + "</a>"
+        url = "https://prancingturtle.com"
+        url = '<a href="' + url + '/Encounter/Interaction?id=' + encounterid + "&p=" + playerid + '&outgoing=True&type=HPS&mode=ability&filter=all" target="_blank">' + text + "</a>"
     return url
 
 
@@ -467,7 +467,7 @@ def average(data, number_of_players, dps_hps):
                 dps_median += [(dps[place])]
         # dps_sum = round(dps_sum/number_of_players)
     # return dps_sum
-    return int(round(median(dps_median)))
+    return round(median(dps_median))
 
 
 def content(mycursor):

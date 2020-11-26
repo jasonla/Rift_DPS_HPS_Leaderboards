@@ -5,7 +5,7 @@ import mysql_connect_config
 
 def get_database_session(mycursor, sessionid):
     session_exist = False
-    sql = "SELECT * FROM Session where sessionid ='" + sessionid + "'"
+    sql = "SELECT * FROM session where sessionid ='" + sessionid + "'"
     mycursor.execute(sql)
     myresult = mycursor.fetchall()
     if myresult:
@@ -14,25 +14,25 @@ def get_database_session(mycursor, sessionid):
 
 
 def add_database_session(mydb, mycursor, sessionid):
-    sql = "SELECT * FROM Session where sessionid ='" + sessionid + "'"
+    sql = "SELECT * FROM session where sessionid ='" + sessionid + "'"
     mycursor.execute(sql)
     myresult = mycursor.fetchall()
     if not myresult:
-        sql = "INSERT INTO Session (sessionid) VALUES (" + sessionid + ")"
+        sql = "INSERT INTO session (sessionid) VALUES (" + sessionid + ")"
         mycursor.execute(sql)
         mydb.commit()
 
 
 def database_guild(mydb, mycursor, guild, guildname):
     if guildname not in guild:
-        sql = "SELECT * FROM Guild where guildname ='" + guildname + "'"
+        sql = "SELECT * FROM guild where guildname ='" + guildname + "'"
         mycursor.execute(sql)
         myresult = mycursor.fetchall()
         if not myresult:
-            sql = "INSERT INTO Guild (guildname) VALUES ('" + guildname + "')"
+            sql = "INSERT INTO guild (guildname) VALUES ('" + guildname + "')"
             mycursor.execute(sql)
             mydb.commit()
-            sql = "SELECT * FROM Guild where guildname ='" + guildname + "'"
+            sql = "SELECT * FROM guild where guildname ='" + guildname + "'"
             mycursor.execute(sql)
             myresult = mycursor.fetchall()
         if myresult:
@@ -43,7 +43,7 @@ def database_guild(mydb, mycursor, guild, guildname):
 
 def database_boss(mycursor, boss, bossname):
     if bossname not in boss:
-        sql = "SELECT id, bossname FROM Boss where bossname ='" + bossname + "'"
+        sql = "SELECT id, bossname FROM boss where bossname ='" + bossname + "'"
         mycursor.execute(sql)
         myresult = mycursor.fetchall()
         for item in myresult:
@@ -72,19 +72,19 @@ def player_class(classid, playerclass):
 
 def database_player(mydb, mycursor, guildid, player, playerid, playername, playerclass):
     if playerid == "0":
-        sql = "SELECT ptid, id FROM Player where playername ='" + playername + "' and classid ='"\
+        sql = "SELECT ptid, id FROM player where playername ='" + playername + "' and classid ='"\
               + str(playerclass) + "'"
     else:
-        sql = "SELECT id, ptid FROM Player where ptid ='" + playerid + "'"
+        sql = "SELECT id, ptid FROM player where ptid ='" + playerid + "'"
     mycursor.execute(sql)
     myresult = mycursor.fetchall()
     if not myresult:
-        sql = "INSERT INTO Player (ptid, guildid, playername, classid) VALUES (%s, %s, %s, %s)"
+        sql = "INSERT INTO player (ptid, guildid, playername, classid) VALUES (%s, %s, %s, %s)"
         val = (playerid, guildid, playername, playerclass)
         mycursor.execute(sql, val)
         mydb.commit()
         # print(playername, "added to the database.")
-        sql = "SELECT ptid, id FROM Player where ptid ='" + playerid + "'"
+        sql = "SELECT ptid, id FROM player where ptid ='" + playerid + "'"
         mycursor.execute(sql)
         myresult = mycursor.fetchall()
         for item in myresult:
@@ -94,7 +94,7 @@ def database_player(mydb, mycursor, guildid, player, playerid, playername, playe
             for item in myresult:
                 player = item[1]
         else:
-            sql = "SELECT ptid, id FROM Player where ptid ='" + playerid + "'"
+            sql = "SELECT ptid, id FROM player where ptid ='" + playerid + "'"
             mycursor.execute(sql)
             myresult = mycursor.fetchall()
             for item in myresult:
@@ -105,7 +105,7 @@ def database_player(mydb, mycursor, guildid, player, playerid, playername, playe
 
 
 def database_role(mycursor, role):
-    sql = "SELECT * FROM Roles"
+    sql = "SELECT * FROM roles"
     mycursor.execute(sql)
     myresult = mycursor.fetchall()
     for item in myresult:
@@ -113,10 +113,9 @@ def database_role(mycursor, role):
     return role
 
 
-def database_encounter(mydb, mycursor, encounterid, bossid, player, roleid, dps, hps, thps, aps, time, totaltime,
-                       date, bossname, playername, guildid, playerclass):
+def database_encounter(mydb, mycursor, encounterid, bossid, player, roleid, dps, hps, thps, aps, time, totaltime, date, bossname, playername, guildid, playerclass):
     new_encounterid = 0
-    sql = "SELECT id FROM Encounterinfo where encounterid='" + encounterid + "' and bossid='" + str(bossid) + "'"
+    sql = "SELECT id FROM encounterinfo where encounterid='" + encounterid + "' and bossid='" + str(bossid) + "'"
     mycursor.execute(sql)
     myresult = mycursor.fetchall()
     if myresult:
@@ -126,30 +125,28 @@ def database_encounter(mydb, mycursor, encounterid, bossid, player, roleid, dps,
 
     else:
         print(date)
-        sql = "INSERT INTO Encounterinfo (guildid, encounterid, bossid, time, totaltime, date) " \
-              "VALUES (%s,%s, %s, %s, %s, %s)"
+        sql = "INSERT INTO encounterinfo (guildid, encounterid, bossid, time, totaltime, date) VALUES (%s,%s, %s, %s, %s, %s)"
         val = (guildid, encounterid, bossid, time, totaltime, date)
         mycursor.execute(sql, val)
         mydb.commit()
-        sql = "SELECT id FROM Encounterinfo where encounterid='" + encounterid + "'"
+        sql = "SELECT id FROM encounterinfo where encounterid='" + encounterid + "'"
         mycursor.execute(sql)
         myresult = mycursor.fetchall()
         for item in myresult:
             new_encounterid = item[0]
     if player == "0":
-        sql = "SELECT ptid FROM Player where playername ='" + playername + "' and classid ='" + playerclass + "'"
+        sql = "SELECT ptid FROM player where playername ='" + playername + "' and classid ='" + playerclass + "'"
         mycursor.execute(sql)
         myresult = mycursor.fetchall()
         for item in myresult:
             player = item[0]
 
-    sql = "SELECT id FROM Encounter where playerid ='" + str(player) + "' and encounterid='" + str(new_encounterid)\
+    sql = "SELECT id FROM encounter where playerid ='" + str(player) + "' and encounterid='" + str(new_encounterid)\
           + "'"
     mycursor.execute(sql)
     myresult = mycursor.fetchall()
     if not myresult:
-        sql = "INSERT INTO Encounter (encounterid, playerid, roleid, dps, hps, thps, aps)" \
-              " VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        sql = "INSERT INTO encounter (encounterid, playerid, roleid, dps, hps, thps, aps) VALUES (%s, %s, %s, %s, %s, %s, %s)"
         val = (new_encounterid, player, roleid, dps, hps, thps, aps)
         mycursor.execute(sql, val)
         mydb.commit()
@@ -227,9 +224,7 @@ def main():
             playerclass = player_class(classid, playerclass)
             player = database_player(mydb, mycursor, guild[guildname], player, playerid, playername, playerclass)
             # print(playername + "-" + str(dps) + " - " + playerid)
-            database_encounter(mydb, mycursor, encounterid, boss[bossname], player, role[rolename], dps,
-                               hps, thps, aps, time, totaltime, date, bossname, playername, guild[guildname],
-                               playerclass)
+            database_encounter(mydb, mycursor, encounterid, boss[bossname], player, role[rolename], dps, hps, thps, aps, time, totaltime, date, bossname, playername, guild[guildname], playerclass)
             # print(boss)
         file.close()
 
