@@ -5,6 +5,7 @@ import gzip
 import shutil
 from operator import itemgetter, attrgetter
 from statistics import median
+import statistics
 
 
 def get_bossid(mycursor):
@@ -33,14 +34,14 @@ def mysql_leaders_html_comps(mycursor, bossid, number_of_players, guild):
     if bossid == "2":
         time = "time"
     sql = "select playername, dps, time, totaltime, date, hps, class, role, a.encounterid, ptid, guildname " \
-          "FROM Encounterinfo a " \
-          "INNER JOIN Encounter on a.id = Encounter.encounterid " \
-          "INNER JOIN Player on Encounter.playerid = Player.id " \
-          "INNER JOIN Classes on Player.classid = Classes.id " \
-          "INNER JOIN Roles on Encounter.roleid = Roles.id " \
-          "INNER JOIN Guild on Guild.id = a.guildid " \
-          "where bossid = " + bossid + " and guildname <> '" + guild + "' "\
-          "ORDER BY " + time + ", date, Encounter.dps desc limit " + number_of_players + ""
+          "FROM encounterinfo a " \
+          "INNER JOIN encounter on a.id = encounter.encounterid " \
+          "INNER JOIN player on encounter.playerid = player.id " \
+          "INNER JOIN classes on player.classid = classes.id " \
+          "INNER JOIN roles on encounter.roleid = roles.id " \
+          "INNER JOIN guild on guild.id = a.guildid " \
+          "where bossid = " + bossid + " and guildname <> '" + guild + "' " \
+          "ORDER BY " + time + ", date, encounter.dps desc limit " + number_of_players + ""
     mycursor.execute(sql)
     myresult = mycursor.fetchall()
     return myresult
@@ -52,14 +53,14 @@ def mysql_leaders_html_fastest_kills(mycursor, bossid, number_of_players):
     if bossid == "2":
         mintime = " Min(time) as mintime, totaltime"
         time = "time"
-    sql = "select Guild.guildname, sum(dps) as sum_dps, " + mintime + ", a.encounterid from Encounterinfo a " \
-          "INNER JOIN Encounter on a.id = Encounter.encounterid " \
-          "INNER JOIN Guild on a.guildid = Guild.id " \
+    sql = "select guild.guildname, sum(dps) as sum_dps, " + mintime + ", a.encounterid from encounterinfo a " \
+          "INNER JOIN encounter on a.id = encounter.encounterid " \
+          "INNER JOIN guild on a.guildid = guild.id " \
           "WHERE a.bossid = " + bossid + " and a.id = ( " \
-          "SELECT id from Encounterinfo b " \
+          "SELECT id from encounterinfo b " \
           "WHERE b.bossid = " + bossid + " and b.guildid = a.guildid " \
           "ORDER BY b." + time + " limit 1) " \
-          "group by Guild.guildname " \
+          "group by guild.guildname " \
           "ORDER BY mintime, sum_dps desc limit " + number_of_players + ""
     mycursor.execute(sql)
     myresult = mycursor.fetchall()
@@ -69,22 +70,22 @@ def mysql_leaders_html_fastest_kills(mycursor, bossid, number_of_players):
 def mysql_top_dps_hps(mycursor, bossid, classid, number_of_players, role, dps_hps, html_file):
     condition = ""
     if "wildwest" in html_file:
-        condition2 = "INNER JOIN Player ON ABS(Encounter.playerid) = Player.id "
+        condition2 = "INNER JOIN player ON ABS(encounter.playerid) = player.id "
     else:
-        condition2 = "INNER JOIN Player ON Encounter.playerid = Player.id "
+        condition2 = "INNER JOIN player ON encounter.playerid = player.id "
     if classid:
-        condition += " and Player.classid = " + classid + ""
+        condition += " and player.classid = " + classid + ""
     if role:
-        condition += " and Roles.role like '%" + role + "%'"
+        condition += " and roles.role like '%" + role + "%'"
     sql = "SELECT playername, dps AS DPS, time, totaltime, date, HPSAPS, class, role, " \
           "encounterid, ptid, aps, thps, bossname FROM ( " \
           "SELECT DISTINCT playername, dps, a.encounterid, playerid AS id, dps AS max_dps_hps ," \
-          " TIME, totaltime, date, hps + aps as HPSAPS, class, role, ptid, aps, thps, bossname FROM Encounterinfo a " \
-          "INNER JOIN Encounter ON a.id = Encounter.encounterid " \
+          " TIME, totaltime, date, hps + aps as HPSAPS, class, role, ptid, aps, thps, bossname FROM encounterinfo a " \
+          "INNER JOIN encounter ON a.id = encounter.encounterid " \
           "" + condition2 + "" \
-          "INNER JOIN Classes on Player.classid = Classes.id " \
-          "INNER JOIN Roles on Encounter.roleid = Roles.id " \
-          "INNER JOIN Boss on a.bossid = Boss.id " \
+          "INNER JOIN classes on player.classid = classes.id " \
+          "INNER JOIN roles on encounter.roleid = roles.id " \
+          "INNER JOIN boss on a.bossid = boss.id " \
           "WHERE bossid = " + bossid + condition + " " \
           "ORDER BY " + dps_hps + " DESC) AS top_dps_hps " \
           "GROUP BY playername " \
@@ -103,21 +104,20 @@ def mysql_top100(mycursor, bossid, classid, number_of_players, role, dps_hps):
         max_dps = "1030000"
     if classid:
         if classid == "1":
-            condition += " and Player.classid = 1 and (date >= '2019-12-12' and DPS > " + min_dps + " or DPS > " \
-                         + max_dps + ")"
+            condition += " and player.classid = 1 and (date >= '2019-12-12' and DPS > " + min_dps + " or DPS > " + max_dps + ")"
         else:
-            condition += " and Player.classid = " + classid + " and DPS > " + min_dps + ""
+            condition += " and player.classid = " + classid + " and DPS > " + min_dps + ""
     # if role:
     #     condition += " and Roles.role = 'dps'"
     sql = "SELECT playername, dps AS DPS, time, totaltime, date, HPSAPS, class, role, " \
           "encounterid, ptid, aps, thps, bossname FROM ( " \
           "SELECT DISTINCT playername, dps, a.encounterid, playerid AS id, dps AS max_dps_hps ," \
-          " TIME, totaltime, date, hps + aps as HPSAPS, class, role, ptid, aps, thps, bossname FROM Encounterinfo a " \
-          "INNER JOIN Encounter ON a.id = Encounter.encounterid " \
-          "INNER JOIN Player ON Encounter.playerid = Player.id " \
-          "INNER JOIN Classes on Player.classid = Classes.id " \
-          "INNER JOIN Roles on Encounter.roleid = Roles.id " \
-          "INNER JOIN Boss on a.bossid = Boss.id " \
+          " TIME, totaltime, date, hps + aps as HPSAPS, class, role, ptid, aps, thps, bossname FROM encounterinfo a " \
+          "INNER JOIN encounter ON a.id = encounter.encounterid " \
+          "INNER JOIN player ON encounter.playerid = player.id " \
+          "INNER JOIN classes on player.classid = classes.id " \
+          "INNER JOIN roles on encounter.roleid = roles.id " \
+          "INNER JOIN boss on a.bossid = boss.id " \
           "WHERE bossid = " + bossid + condition + " " \
           "ORDER BY " + dps_hps + " DESC) AS top_dps_hps " \
           "GROUP BY playername " \
@@ -130,15 +130,15 @@ def mysql_top100(mycursor, bossid, classid, number_of_players, role, dps_hps):
 
 def mysql_last_uploads(mycursor):
     sql = "SELECT date, bossname, guildname, playername, class, role, dps, hps, thps, aps, TIME, totaltime, " \
-          "Encounterinfo.encounterid, ptid " \
+          "encounterinfo.encounterid, ptid " \
           "FROM encounterinfo " \
-          "INNER JOIN Encounter ON Encounterinfo.id = Encounter.encounterid " \
-          "INNER JOIN Boss ON Encounterinfo.bossid = Boss.id " \
-          "INNER JOIN Player ON Encounter.playerid = Player.id " \
-          "INNER JOIN Classes on Player.classid = Classes.id " \
-          "INNER JOIN Guild on Encounterinfo.guildid = Guild.id " \
-          "INNER JOIN Roles on Encounter.roleid = Roles.id " \
-          "ORDER BY encounterinfo.encounterid desc, Boss.id desc, dps desc " \
+          "INNER JOIN encounter ON encounterinfo.id = encounter.encounterid " \
+          "INNER JOIN boss ON encounterinfo.bossid = boss.id " \
+          "INNER JOIN player ON encounter.playerid = player.id " \
+          "INNER JOIN classes on player.classid = classes.id " \
+          "INNER JOIN guild on encounterinfo.guildid = guild.id " \
+          "INNER JOIN roles on encounter.roleid = roles.id " \
+          "ORDER BY encounterinfo.encounterid desc, boss.id desc, dps desc " \
           "LIMIT 400"
     mycursor.execute(sql)
     myresult = mycursor.fetchall()
@@ -151,13 +151,13 @@ def mysql_json(mycursor, bossid, roleid, order):
           "encounterid, ptid FROM ( " \
           "SELECT DISTINCT playername, dps, a.encounterid, playerid, dps AS max_dps_hps ," \
           " time, totaltime, date, hps + aps as HPSAPS, class, role, ptid, aps, hps, thps, bossname, guildname " \
-          "FROM Encounterinfo a " \
-          "INNER JOIN Encounter ON a.id = Encounter.encounterid " \
-          "INNER JOIN Player ON Encounter.playerid = Player.id " \
-          "INNER JOIN Classes on Player.classid = Classes.id " \
-          "INNER JOIN Roles on Encounter.roleid = Roles.id " \
-          "INNER JOIN Boss on a.bossid = Boss.id " \
-          "INNER JOIN Guild on a.guildid = Guild.id " \
+          "FROM encounterinfo a " \
+          "INNER JOIN encounter ON a.id = encounter.encounterid " \
+          "INNER JOIN player ON encounter.playerid = player.id " \
+          "INNER JOIN classes on player.classid = classes.id " \
+          "INNER JOIN roles on encounter.roleid = roles.id " \
+          "INNER JOIN boss on a.bossid = boss.id " \
+          "INNER JOIN guild on a.guildid = guild.id " \
           "WHERE bossid = " + bossid + " AND roleid = " + roleid + " " \
           "ORDER BY " + order + " DESC) AS top_dps_hps " \
           "GROUP BY playername " \
@@ -169,24 +169,21 @@ def mysql_json(mycursor, bossid, roleid, order):
 
 
 def mysql_count_players_encounter(mycursor):
-    sql = "SELECT COUNT(id) FROM Player"
+    sql = "SELECT COUNT(id) FROM player"
     mycursor.execute(sql)
     myresult = mycursor.fetchall()
     return myresult
 
 
 def mysql_count_encounters(mycursor):
-    sql = "SELECT COUNT(id) FROM Encounterinfo"
+    sql = "SELECT COUNT(id) FROM encounterinfo"
     mycursor.execute(sql)
     myresult = mycursor.fetchall()
     return myresult
 
 
 def mysql_count_classes(mycursor):
-    sql = "SELECT class, COUNT(Player.id) as number FROM Player " \
-          "INNER JOIN Classes on Player.classid = Classes.id " \
-          "GROUP BY classid " \
-          "ORDER BY NUMBER desc"
+    sql = "SELECT class, COUNT(player.id) as number FROM player INNER JOIN classes on player.classid = classes.id GROUP BY classid ORDER BY NUMBER desc"
     mycursor.execute(sql)
     myresult = mycursor.fetchall()
     return myresult
@@ -194,35 +191,23 @@ def mysql_count_classes(mycursor):
 
 def format_number(number):
     number = abs(number)
-    locale.setlocale(locale.LC_NUMERIC, "german")
+    #locale.setlocale(locale.LC_NUMERIC, "german")
     number = locale.format_string("%.0f", number, grouping=True)
     return number
 
 
 def create_url_dps(encounterid, playerid, text):
     if encounterid == "111" and playerid == "148245":
-        url = '<a href="https://cdn.discordapp.com/attachments/560240994453553152/607675138359427073/' \
-              '2019-08-04_223032.jpg" target="_blank">' + text + "</a>"
-    elif encounterid == "17626" and playerid == "141559":
-        url = '<a href="https://cdn.discordapp.com/attachments/281193813773516803/498550194191859712/' \
-              '2018-10-07_191938.jpg" target="_blank">' + text + "</a>"
-    elif encounterid == "91115" and playerid == "148454":
-        url = '<a href="https://cdn.discordapp.com/attachments/560240994453553152/644976197494636544/' \
-              '2019-11-15_200348.jpg" target="_blank">' + text + "</a>"
-    elif encounterid == "1" and playerid == "149618":
-        url = '<a href="https://media.discordapp.net/attachments/560240994453553152/745016680551546961/' \
-              '2020-08-17_222835.jpg?width=1355&height=762" target="_blank">' + text + "</a>"
+        url = '<a href="https://cdn.discordapp.com/attachments/560240994453553152/607675138359427073/2019-08-04_223032.jpg" target="_blank">' + text + "</a>"
     else:
         url = "https://prancingturtle.com"
-        url = '<a href="' + url + '/Encounter/Interaction?id=' + encounterid + "&p=" + playerid + \
-              '&outgoing=True&type=DPS&mode=ability&filter=all" target="_blank">' + text + "</a>"
+        url = '<a href="' + url + '/Encounter/Interaction?id=' + encounterid + "&p=" + playerid + '&outgoing=True&type=DPS&mode=ability&filter=all" target="_blank">' + text + "</a>"
     return url
 
 
 def create_url_hps(encounterid, playerid, text):
     url = "https://prancingturtle.com"
-    url = '<a href="' + url + '/Encounter/Interaction?id=' + encounterid + "&p=" + playerid + \
-          '&outgoing=True&type=HPS&mode=ability&filter=all" target="_blank">' + text + "</a>"
+    url = '<a href="' + url + '/Encounter/Interaction?id=' + encounterid + "&p=" + playerid + '&outgoing=True&type=HPS&mode=ability&filter=all" target="_blank">' + text + "</a>"
     return url
 
 
@@ -482,7 +467,7 @@ def average(data, number_of_players, dps_hps):
                 dps_median += [(dps[place])]
         # dps_sum = round(dps_sum/number_of_players)
     # return dps_sum
-    return round(median(dps_median))
+    return int(round(median(dps_median)))
 
 
 def content(mycursor):
@@ -497,10 +482,7 @@ def content(mycursor):
         else:
             class_html += ", " + str(item[1]) + " " + item[0] + "s"
         i += 1
-    html = "The database contains " + str(players) + " Players, " + class_html + " who killed " + str(encounters) \
-           + ' bosses. The database only contains data after <a href="http://forums.riftgame.com/general-discussions/' \
-             'patch-notes/505586-rift-4-5-update-7-11-2018-a.html" target="new">2018-07-11</a> the last major class' \
-             ' balance patch.'
+    html = "The database contains " + str(players) + " Players, " + class_html + " who killed " + str(encounters) + ' bosses. The database only contains data after <a href="http://forums.riftgame.com/general-discussions/patch-notes/505586-rift-4-5-update-7-11-2018-a.html" target="new">2018-07-11</a> the last major class balance patch. <br />This page is updated manually and once every 24 hours.'
     return html
 
 
