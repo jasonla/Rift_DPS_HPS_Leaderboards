@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import codecs
 import requests
 from datetime import datetime
@@ -7,6 +5,8 @@ import math
 import os
 import mysql_connect_config
 import mysql_add_data
+import invoke_discord
+import requests
 
 
 def get_session_id(mydb, mycursor, delta, month, sid, url):
@@ -54,7 +54,7 @@ def get_encounter_id(sid, boss, website, parse_date):
             print(date + " " + url)
             guild = html.split('>&lt;')[1]
             guild = guild.split('&gt;</a>')[0]
-            # print(guild)
+            print(guild)
             encounters = html.split('RemoveSelectedEncounters')[1]
             encounters = encounters.split('<a href="/Session/')
             for encounter in encounters:
@@ -70,7 +70,6 @@ def get_encounter_id(sid, boss, website, parse_date):
             if encounterid:
                 encounters_id += [[date, guild, encounterid]]
     encounters_id.sort()
-    print(encounters_id)
     for item_encounter in encounters_id:
         for eid in item_encounter[2]:
             new_encounterid += [[eid, item_encounter[0], item_encounter[1]]]
@@ -80,8 +79,6 @@ def get_encounter_id(sid, boss, website, parse_date):
 def cf_decode_email(encodedstring):
     r = int(encodedstring[:2], 16)
     name = ''.join([chr(int(encodedstring[i:i + 2], 16) ^ r) for i in range(2, len(encodedstring), 2)])
-    if name == "en@Brisesol":
-        name = "Kyurêen"
     name = name.split("@")[0]
     return name
 
@@ -91,6 +88,8 @@ def ability_role():
 
     role = "support"
     abilities += [["Wild Storms", role, "Primalist"]]  # Mystic
+    abilities += [["Air Lash", role, "Primalist"]]  # Mystic
+    abilities += [["Tailwind", role, "Primalist"]]  # Mystic
     abilities += [["Glacial Insignia", role, "Cleric"]]  # Oracle
     abilities += [["Wasting Insignia", role, "Cleric"]]  # Oracle
     abilities += [["Burning Purpose", role, "Mage"]]  # Archon
@@ -106,9 +105,11 @@ def ability_role():
     abilities += [["Fae Mimicry", role, "Cleric"]]  # Druid
     abilities += [["Bound Fate", role, "Cleric"]]  # Cabalist
     abilities += [["Lebensanstieg", role, "Cleric"]]  # Druid
+    abilities += [["Bolt of Retribution", role, "Cleric"]]  # Inq
+    abilities += [["Massive Blow", role, "Cleric"]]  # Shaman
     abilities += [["Rapid Fire Shot", role, "Rogue"]]  # Marksman
-    # abilities += [["Hellfire Blades", role, "Rogue"]]  # Nightblade
-    # abilities += [["Miserly Affliction", role, "Cleric"]]  # Defiler
+    abilities += [["Hellfire Blades", role, "Rogue"]]  # Nightblade
+    abilities += [["Miserly Affliction", role, "Cleric"]]  # Defiler
 
     role = "tank"
     abilities += [["Unstable Reaction", role, "Warrior"]]  # Void Knight
@@ -199,7 +200,7 @@ def get_tank_role(website, eid, playerid):
         encounter = encounter.split('">')[1]
     encounter_attack = "<td><b>attack (" + encounter
     if encounter_attack in html:
-        print(url)
+        # print(url)
         attack = html.split("<td><b>attack (")[1]
         attack = attack.split('<td class="text-center info">')[0]
         attack = attack.split('<td class="text-center">')
@@ -207,7 +208,7 @@ def get_tank_role(website, eid, playerid):
             attack = int(attack[6].split('</td>')[0].strip())
         except:
             attack = int(attack[7].split('</td>')[0].strip())
-        print("attack: " + str(attack))
+        # print("attack: " + str(attack))
         if attack > 5:
             tank_role = True
     return tank_role
@@ -219,7 +220,7 @@ def get_player_class_dps(eid, player_class, website):
     fight_length = -1
     for item in eid:
         url = website + "Encounter/PlayerDamageDone/" + item[0]
-        print(url)
+        # print(url)
         html = requests.get(url).text
         players = html.split('roles/')
         roles = []
@@ -278,13 +279,13 @@ def get_player_class_dps(eid, player_class, website):
                 roles += [[name, role, playerid, hps, ohps, aps]]
                 if p_class != "unknown":
                     player_class.update({name: p_class})
-        print(roles)
+        # print(roles)
         url = website + "Encounter/NpcDamageTaken/" + item[0]
-        print(url)
+        # print(url)
         html = requests.get(url).text
         encounter_name = html.split('Encounter: ')[1]
         encounter_name = encounter_name.split("</h4>")[0]
-        print(encounter_name)
+        # print(encounter_name)
         npc = []
         encounter = html.split('&outgoing')[0]
         encounter = encounter.split('&n=')[1]
@@ -303,7 +304,7 @@ def get_player_class_dps(eid, player_class, website):
             url = website + "/Encounter/Interaction?id=" + item[0] + "&n="
             ability_name = get_role(url, boss)
             for playername in ability_name:
-                print(playername)
+                # print(playername)
                 player_class.update({playername[0]: playername[3]})
             url += boss + "&outgoing=False&type=DPS&mode=target&filter=all"
             print(url)
@@ -349,7 +350,7 @@ def get_player_class_dps(eid, player_class, website):
                         fight_length_counter += 1
                         if first_hit:
                             counter += 1
-                        if counter == 8:
+                        if counter == 12: #This is in seconds....... maybe.
                             break
             seconds_with_encounter = i
             if seconds_with_encounter == fight_length and int(total_dps) > 0:
@@ -385,7 +386,7 @@ def get_player_class_dps(eid, player_class, website):
                                     pdata = pdata.split("], name: '" + name)[0]
                                     pdata = pdata.split("[")[1]
                                     pdata = pdata.split(", ")
-                                    print("pdata", pdata)
+                                    # print("pdata", pdata)
                                     player_total_dmg = 0
                                     x = -1
                                     for playerdamage in pdata:
@@ -440,7 +441,7 @@ def get_player_class_dps(eid, player_class, website):
                                     p_class + "\t" + dps + "\t" + (str(minute) + ":" + str(second) + "\t" + role)
                                     + "\t" + item[2] + "\t" + encounter_time + "\t" + str(playerid) + "\t" + str(hps)
                                     + "\t" + str(thps) + "\t" + str(aps))
-                            print(info)
+                            # print(info)
                             infos += [info]
             if len(dps_names) < 10:
                 for healer in roles:
@@ -451,13 +452,14 @@ def get_player_class_dps(eid, player_class, website):
                                                                + "\t" + item[2] + "\t" + encounter_time + "\t" + str(
                                             healer[2]) + "\t" + str(healer[3])
                                                                + "\t" + str(healer[4]) + "\t" + str(healer[5])))
-                        print(info)
+                        # print(info)
                         infos += [info]
 
     return infos
 
 
 def main():
+    currdt = datetime.now()
     website = "https://prancingturtle.com/"
     parse_date = "2019-06-10"  # the date from which you want to collect the data
     bossfight = (163, 164, 165)  # Azranel, Commander Isiel, Titan X
@@ -466,33 +468,40 @@ def main():
     playerclass = {}
     mydb = mysql_connect_config.database_connect()
     mycursor = mydb.cursor()
-    print("Start searching for Session ID's:")
+    print("Start searching for new Session IDs...")
     now = datetime.now()
     date = datetime.strptime(parse_date, '%Y-%m-%d')
     delta = str(now - date)
     delta = delta.split(" day")[0]
-    print(delta + " days")
+    print("Looking back " + delta + " days ago... (" + parse_date + ")")
     delta = int(delta) + 1
     month = round(delta / 30)
     for Boss in bossfight:
-        session_id += get_session_id(mydb, mycursor, delta, month, session_id, website + "/Session/BossFight/" +
-                                     str(Boss) + '?o=1&d=4')
+        session_id += get_session_id(mydb, mycursor, delta, month, session_id, website + "/Session/BossFight/" + str(Boss) + '?o=1&d=4')
     if session_id:
+        print("Sorting Sessions...")
         session_id.sort()
         print(session_id)
         print("Start searching for Encounter ID's:")
         encounter_id = get_encounter_id(session_id, bossfight, website, parse_date)
         player_class_dps = get_player_class_dps(encounter_id, playerclass, website)
-        file = codecs.open("../help_files/dps.tsv", 'w', "utf-8")
+        file = codecs.open("/home/rifttop/Rift_DPS_HPS_Leaderboards/help_files/dps.tsv", 'w', "utf-8")
         for line in player_class_dps:
             file.write(line + '\r\n')
         file.close()
         print("The file dps.tsv with all new encounters has been created.")
         for sessionid in session_id:
+            print("Entering for loop...")
+            print(sessionid)
             mysql_add_data.add_database_session(mydb, mycursor, sessionid)
         new_sessions = True
+        print("Dumping out some more debug...")
+        print(session_id)
+        print(encounter_id)
+        print("Invoking Discord hook...")
+        invoke_discord.main(session_id, encounter_id)
     else:
-        print("No new sessions found")
+        print("No new sessions found at runtime: ", currdt)
         new_sessions = False
     return new_sessions
 
