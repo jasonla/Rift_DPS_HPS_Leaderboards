@@ -7,36 +7,64 @@ import mysql_connect_config
 import mysql_add_data
 import invoke_discord
 import requests
+import re
 
 
 def get_session_id(mydb, mycursor, delta, month, sid, url):
-    session_key = []
-    print(url)
+    """Retreives the most recent session ids on a boss encounter page, example:
+       https://www.prancingturtle.com/Session/BossFight/163?o=1&d=4
+
+    Interates through the list of recently uploaded sessions at a given url, and attempts to extract
+    the session id from the links on the page. Returns a list of session ids
+
+    Parameters
+    ----------
+    mydb : str
+        MySQLConnection. Looks unused? Leaving for now
+    mycursor : str
+        MySQLCursor
+    delta : int
+    month : int
+    sid : List[int]
+        List of existing session ids for duplication detection
+    url : str
+    """
+    session_keys = []
+    
+    # pre-compile the regex for faster matching
+    pattern_timeframe = re.compile(r"<b>(\d+)\s(day|month)s{0,1}?\sago<\/b>")
+    pattern_session_id = re.compile(r"Detail\/(\d+)\">")
+
     html = requests.get(url).text
     html = html.split("<h5>(All sessions that included this encounter)</h5>")[1]
-    session = html.split('Session/')
-    for item in session:
+    sessions = html.split('Session/')
+
+    for item in sessions:
         delta_day = 0
         delta_month = 0
-        if "ago" in item:
-            if " day" in item:
-                days = item.split(" day")[0]
-                days = days.split("<b>")[1]
-                delta_day = int(days)
-            elif " month" in item:
-                months = item.split(" month")[0]
-                if "<b>" in months:
-                    months = months.split("<b>")[1]
-                    delta_month = int(months)
+        timeframe_results = re.search(pattern_timeframe, item)
+
+        if timeframe_results and timeframe_results.lastindex == 2: # Extra safety check
+            time_value = timeframe_results[1].strip() # numeric value
+            time_interval = timeframe_results[2].strip() # hour/day/month
+  
+            if time_interval == "day":
+                delta_day = int(time_value)
+            elif time_interval == "month":
+                delta_month = int(time_value)
+
             if delta_day <= delta and delta_month <= month:
-                if "Detail/" in item:
-                    item = item.split("Detail/")[1]
-                    item = item.split('">')[0]
-                    if item not in sid:
-                        session_exist = mysql_add_data.get_database_session(mycursor, item)
+                session_results = re.search(pattern_session_id, item)
+
+                if session_results and session_results.lastindex == 1: # Extra safety check
+                    found_session_id = session_results[1].strip()
+
+                    if found_session_id not in sid:
+                        session_exist = mysql_add_data.get_database_session(mycursor, found_session_id)
+                        
                         if not session_exist:
-                            session_key += [str(item)]
-    return session_key
+                            session_keys += [str(found_session_id)]
+    return session_keys
 
 
 def get_encounter_id(sid, boss, website, parse_date):
@@ -460,9 +488,9 @@ def get_player_class_dps(eid, player_class, website):
 
 def main():
     currdt = datetime.now()
-    website = "https://prancingturtle.com/"
+    website = "https://www.prancingturtle.com/"
     parse_date = "2019-06-10"  # the date from which you want to collect the data
-    bossfight = (163, 164, 165)  # Azranel, Commander Isiel, Titan X
+    boss_fights = (163, 164, 165)  # Azranel, Commander Isiel, Titan X
     session_id = []
     old_session_id = []
     playerclass = {}
@@ -471,19 +499,17 @@ def main():
     print("Start searching for new Session IDs...")
     now = datetime.now()
     date = datetime.strptime(parse_date, '%Y-%m-%d')
-    delta = str(now - date)
-    delta = delta.split(" day")[0]
+    delta = (now - date).days + 1
     print("Looking back " + delta + " days ago... (" + parse_date + ")")
-    delta = int(delta) + 1
     month = round(delta / 30)
-    for Boss in bossfight:
-        session_id += get_session_id(mydb, mycursor, delta, month, session_id, website + "/Session/BossFight/" + str(Boss) + '?o=1&d=4')
+    for boss in boss_fights:
+        session_id += get_session_id(mydb, mycursor, delta, month, session_id, website + "/Session/BossFight/" + str(boss) + '?o=1&d=4')
     if session_id:
         print("Sorting Sessions...")
         session_id.sort()
         print(session_id)
         print("Start searching for Encounter ID's:")
-        encounter_id = get_encounter_id(session_id, bossfight, website, parse_date)
+        encounter_id = get_encounter_id(session_id, boss_fights, website, parse_date)
         player_class_dps = get_player_class_dps(encounter_id, playerclass, website)
         file = codecs.open("/home/rifttop/Rift_DPS_HPS_Leaderboards/help_files/dps.tsv", 'w', "utf-8")
         for line in player_class_dps:
