@@ -19,9 +19,9 @@ def get_session_id(mydb, mycursor, delta, month, sid, url):
 
     Parameters
     ----------
-    mydb : str
+    mydb : MySQLConnection
         MySQLConnection. Looks unused? Leaving for now
-    mycursor : str
+    mycursor : MySQLCursor
         MySQLCursor
     delta : int
     month : int
@@ -61,7 +61,7 @@ def get_session_id(mydb, mycursor, delta, month, sid, url):
 
                     if found_session_id not in sid:
                         session_exist = mysql_add_data.get_database_session(mycursor, found_session_id)
-                        
+
                         if not session_exist:
                             session_keys += [str(found_session_id)]
     return session_keys
